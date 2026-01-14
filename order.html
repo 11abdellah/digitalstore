@@ -544,54 +544,141 @@
             document.getElementById('orderModal').classList.remove('active');
         }
 
-        async function generatePDFAndRedirect() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+         async function generatePDFAndRedirect() {
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
 
-    await loadArabicFont(doc);
+        // Try to load Arabic font
+        try {
+            await loadArabicFont(doc);
+            
+            // Arabic text with font
+            doc.setFontSize(18);
+            doc.text("فاتورة الطلب", 105, 20, { align: "center" });
 
-    doc.setFontSize(18);
-    doc.text("فاتورة الطلب", 105, 20, { align: "center" });
+            let y = 40;
+            doc.setFontSize(12);
 
-    let y = 40;
-    doc.setFontSize(12);
+            doc.text(`رقم الطلب: ${orderData.orderNumber}`, 190, y, { align: "right" }); y+=10;
+            doc.text(`الاسم: ${orderData.fullName}`, 190, y, { align: "right" }); y+=10;
+            doc.text(`البريد الإلكتروني: ${orderData.email}`, 190, y, { align: "right" }); y+=10;
+            doc.text(`المنتج: ${orderData.product}`, 190, y, { align: "right" }); y+=10;
+            doc.text(`السعر: ${orderData.price}`, 190, y, { align: "right" }); y+=10;
+            doc.text(`طريقة الدفع: ${orderData.paymentMethod}`, 190, y, { align: "right" }); y+=10;
+            doc.text(`التاريخ: ${orderData.orderDate}`, 190, y, { align: "right" }); y+=15;
 
-    doc.text(`رقم الطلب: ${orderData.orderNumber}`, 190, y, { align: "right" }); y+=10;
-    doc.text(`الاسم: ${orderData.fullName}`, 190, y, { align: "right" }); y+=10;
-    doc.text(`البريد الإلكتروني: ${orderData.email}`, 190, y, { align: "right" }); y+=10;
-    doc.text(`المنتج: ${orderData.product}`, 190, y, { align: "right" }); y+=10;
-    doc.text(`السعر: ${orderData.price}`, 190, y, { align: "right" }); y+=10;
-    doc.text(`طريقة الدفع: ${orderData.paymentMethod}`, 190, y, { align: "right" }); y+=10;
-    doc.text(`التاريخ: ${orderData.orderDate}`, 190, y, { align: "right" });
+            // Generate QR Code
+            const qrContainer = document.createElement("div");
+            qrContainer.style.position = "absolute";
+            qrContainer.style.left = "-9999px";
+            document.body.appendChild(qrContainer);
+            
+            new QRCode(qrContainer, { 
+                text: orderData.orderNumber, 
+                width: 128, 
+                height: 128 
+            });
 
-    // QR
-    const qrCanvas = document.createElement("div");
-    new QRCode(qrCanvas, { text: orderData.orderNumber, width: 100, height: 100 });
-    const imgData = qrCanvas.querySelector("img").src;
-    doc.addImage(imgData, "PNG", 80, y + 10, 50, 50);
+            // Wait for QR to generate
+            setTimeout(() => {
+                try {
+                    const qrImage = qrContainer.querySelector("img");
+                    if (qrImage && qrImage.src) {
+                        doc.addImage(qrImage.src, "PNG", 80, y + 10, 50, 50);
+                    }
+                } catch (qrError) {
+                    console.log("QR generation skipped:", qrError);
+                }
+                
+                // Remove QR container
+                if (document.body.contains(qrContainer)) {
+                    document.body.removeChild(qrContainer);
+                }
+                
+                // Save PDF
+                doc.save("Invoice-" + orderData.orderNumber + ".pdf");
 
-    doc.save("Invoice-" + orderData.orderNumber + ".pdf");
+                // Prepare Telegram message
+                const telegramMessage = `
+🆕 طلب جديد
+━━━━━━━━━━━━━━
+مرحبا بك في متجرنا 👋 يرجى رفع الفاتورة المحملة للمتابعة مع عملية الدفع😀
+━━━━━━━━━━━━━━
+⚠️ يرجى إرسال إثبات الدفع
+                `.trim();
 
-    setTimeout(() => {
-        window.open("https://t.me/abdoudz213", "_blank");
-    }, 500);
+                // Encode message for URL
+                const encodedMessage = encodeURIComponent(telegramMessage);
+                
+                // Open Telegram with message
+                setTimeout(() => {
+                    window.open(`https://t.me/abdoudz213?text=${encodedMessage}`, "_blank");
+                    closeModal();
+                }, 500);
+            }, 500);
 
-    closeModal();
+        } catch (fontError) {
+            console.error("Font loading error:", fontError);
+            // Fallback to English if font fails
+            doc.setFontSize(18);
+            doc.text("Order Invoice", 105, 20, { align: "center" });
+
+            let y = 40;
+            doc.setFontSize(12);
+
+            doc.text(`Order Number: ${orderData.orderNumber}`, 20, y); y+=10;
+            doc.text(`Name: ${orderData.fullName}`, 20, y); y+=10;
+            doc.text(`Email: ${orderData.email}`, 20, y); y+=10;
+            doc.text(`Product: ${orderData.product}`, 20, y); y+=10;
+            doc.text(`Price: ${orderData.price}`, 20, y); y+=10;
+            doc.text(`Payment Method: ${orderData.paymentMethod}`, 20, y); y+=10;
+            doc.text(`Date: ${orderData.orderDate}`, 20, y);
+
+            doc.save("Invoice-" + orderData.orderNumber + ".pdf");
+            
+            const telegramMessage = `New Order: ${orderData.orderNumber}\nName: ${orderData.fullName}\nProduct: ${orderData.product}\nPrice: ${orderData.price}`;
+            const encodedMessage = encodeURIComponent(telegramMessage);
+            
+            setTimeout(() => {
+                window.open(`https://t.me/abdoudz213?text=${encodedMessage}`, "_blank");
+                closeModal();
+            }, 500);
+        }
+
+    } catch (error) {
+        console.error("Error generating PDF:", error);
+        alert("حدث خطأ في إنشاء الفاتورة. سيتم توجيهك إلى Telegram مباشرة.");
+        const simpleMessage = encodeURIComponent(`طلب جديد من ${orderData.fullName}`);
+        window.open(`https://t.me/abdoudz213?text=${simpleMessage}`, "_blank");
+        closeModal();
+    }
 }
+
         async function loadArabicFont(doc) {
-    const response = await fetch('fonts/Cairo-Regular.ttf');
-    const font = await response.arrayBuffer();
+            const response = await fetch('fonts/Cairo-Regular.ttf');
+            
+            if (!response.ok) {
+                throw new Error(`Font file not found: ${response.status}`);
+            }
+            
+            const fontArrayBuffer = await response.arrayBuffer();
+            const fontUint8Array = new Uint8Array(fontArrayBuffer);
+            
+            // Convert to base64 properly
+            let binary = '';
+            const len = fontUint8Array.byteLength;
+            for (let i = 0; i < len; i++) {
+                binary += String.fromCharCode(fontUint8Array[i]);
+            }
+            const fontBase64 = btoa(binary);
 
-    const fontBase64 = btoa(
-        new Uint8Array(font)
-            .reduce((data, byte) => data + String.fromCharCode(byte), '')
-    );
-
-    doc.addFileToVFS("Cairo.ttf", fontBase64);
-    doc.addFont("Cairo.ttf", "Cairo", "normal");
-    doc.setFont("Cairo");
-}
+            doc.addFileToVFS("Cairo-Regular.ttf", fontBase64);
+            doc.addFont("Cairo-Regular.ttf", "Cairo", "normal");
+            doc.setFont("Cairo");
+        }
 
     </script>
 </body>
+
 </html>
