@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إتمام الطلب - متجر المنتجات الرقمية</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(147, 51, 234, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(236, 72, 153, 0.3) 0%, transparent 50%);
+            animation: moveGradient 15s ease infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        @keyframes moveGradient {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(30px, -20px) scale(1.05); }
+        }
+
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .back-button {
+            display: inline-block;
+            padding: 12px 30px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            animation: fadeInDown 0.8s ease;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .order-form {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: fadeInUp 0.8s ease;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 1em;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #4ade80;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .form-group input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .form-group select {
+            cursor: pointer;
+        }
+
+        .form-group select option {
+            background: #667eea;
+            color: white;
+        }
+
+        .payment-methods {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .payment-method {
+            background: rgba(255, 255, 255, 0.08);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .payment-method:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-3px);
+        }
+
+        .payment-method.selected {
+            border-color: #4ade80;
+            background: rgba(74, 222, 128, 0.2);
+        }
+
+        .payment-method input[type="radio"] {
+            display: none;
+        }
+
+        .payment-icon {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 10px;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .payment-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .submit-button {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(45deg, #4ade80, #22c55e);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            font-size: 1.3em;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 30px;
+            transition: all 0.3s ease;
+        }
+
+        .submit-button:hover {
+            transform: scale(1.02);
+            box-shadow: 0 10px 30px rgba(34, 197, 94, 0.4);
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            animation: modalSlideIn 0.4s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .modal-header h2 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .invoice-details {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 25px;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+
+        .invoice-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .invoice-row:last-child {
+            border-bottom: none;
+        }
+
+        .invoice-row strong {
+            color: #ffd700;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .modal-button {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .confirm-btn {
+            background: linear-gradient(45deg, #4ade80, #22c55e);
+            color: white;
+        }
+
+        .cancel-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .modal-button:hover {
+            transform: scale(1.05);
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .warning-message {
+            background: rgba(239, 68, 68, 0.2);
+            border: 2px solid #ef4444;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: center;
+            color: #ff6b6b;
+            font-weight: bold;
+            font-size: 1.1em;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.02);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .order-form {
+                padding: 25px;
+            }
+            
+            .payment-methods {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="digital-shop.html" class="back-button">← العودة للمتجر</a>
+        
+        <div class="header">
+            <h1>🛒 إتمام الطلب</h1>
+            <p>أدخل معلوماتك واختر طريقة الدفع</p>
+        </div>
+
+        <div class="order-form">
+            <div class="form-group">
+                <label>الاسم الكامل *</label>
+                <input type="text" id="fullName" placeholder="أدخل اسمك الكامل" required>
+            </div>
+
+            <div class="form-group">
+                <label>البريد الإلكتروني *</label>
+                <input type="email" id="email" placeholder="example@email.com" required>
+            </div>
+
+            <div class="form-group">
+                <label>المنتج المختار</label>
+                <input type="text" id="product" readonly style="cursor: not-allowed; background: rgba(255, 255, 255, 0.05);">
+            </div>
+
+            <div class="form-group">
+                <label>طريقة الدفع *</label>
+                <div class="payment-methods">
+                    <div class="payment-method" onclick="selectPayment('binance')">
+                        <input type="radio" name="payment" id="binance" value="Binance Pay">
+                        <div class="payment-icon">
+                            <img src="binance.png" alt="Binance Pay">
+                        </div>
+                        <strong>Binance Pay</strong>
+                    </div>
+
+                    <div class="payment-method" onclick="selectPayment('baridimob')">
+                        <input type="radio" name="payment" id="baridimob" value="BaridiMob">
+                        <div class="payment-icon">
+                            <img src="baridimob.png" alt="BaridiMob">
+                        </div>
+                        <strong>BaridiMob</strong>
+                    </div>
+
+                    <div class="payment-method" onclick="selectPayment('ccp')">
+                        <input type="radio" name="payment" id="ccp" value="CCP">
+                        <div class="payment-icon">
+                            <img src="ccp.jpg" alt="CCP">
+                        </div>
+                        <strong>CCP</strong>
+                    </div>
+
+                    <div class="payment-method" onclick="selectPayment('flexy')">
+                        <input type="radio" name="payment" id="flexy" value="Flexy">
+                        <div class="payment-icon">
+                            <img src="flexy.png" alt="Flexy">
+                        </div>
+                        <strong>Flexy</strong>
+                    </div>
+                </div>
+            </div>
+
+            <button class="submit-button" onclick="confirmOrder()">تأكيد الطلب 📋</button>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal" id="orderModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📄 تأكيد الطلب</h2>
+                <p>تحقق من معلوماتك قبل المتابعة</p>
+            </div>
+
+            <div class="invoice-details" id="invoicePreview">
+                <!-- Will be filled by JavaScript -->
+            </div>
+
+            <div class="warning-message">
+                ⚠️ الرجاء الضغط على "تأكيد الطلب" ورفع الفاتورة المحملة
+            </div>
+
+            <div class="modal-buttons">
+                <button class="modal-button cancel-btn" onclick="closeModal()">إلغاء</button>
+                <button class="modal-button confirm-btn" onclick="generatePDFAndRedirect()">التقدم للطلب 🚀</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedPaymentMethod = null;
+        let orderData = {};
+
+        // Load product from URL parameter
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const productName = urlParams.get('product');
+            const productPrice = urlParams.get('price');
+            
+            if (productName && productPrice) {
+                document.getElementById('product').value = `${productName} - ${productPrice}`;
+            } else {
+                document.getElementById('product').value = 'لم يتم اختيار منتج';
+            }
+        }
+
+        function selectPayment(method) {
+            document.querySelectorAll('.payment-method').forEach(pm => {
+                pm.classList.remove('selected');
+            });
+            
+            const selected = document.getElementById(method).closest('.payment-method');
+            selected.classList.add('selected');
+            document.getElementById(method).checked = true;
+            selectedPaymentMethod = document.getElementById(method).value;
+        }
+
+        function confirmOrder() {
+            const fullName = document.getElementById('fullName').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const product = document.getElementById('product').value;
+
+            if (!fullName || !email || !product) {
+                alert('⚠️ الرجاء ملء جميع الحقول المطلوبة');
+                return;
+            }
+
+            if (!selectedPaymentMethod) {
+                alert('⚠️ الرجاء اختيار طريقة الدفع');
+                return;
+            }
+
+            // Extract price from product
+            const priceMatch = product.match(/(\d+)DZD/);
+            const price = priceMatch ? priceMatch[1] : '0';
+
+            // Save order data
+            orderData = {
+                orderNumber: 'ORD-' + Date.now(),
+                fullName: fullName,
+                email: email,
+                product: product,
+                price: price + ' DZD',
+                paymentMethod: selectedPaymentMethod,
+                orderDate: new Date().toLocaleString('ar-DZ')
+            };
+
+            // Show preview modal
+            showOrderPreview();
+        }
+
+        function showOrderPreview() {
+            const preview = document.getElementById('invoicePreview');
+            preview.innerHTML = `
+                <div class="invoice-row">
+                    <span>رقم الطلب:</span>
+                    <strong>${orderData.orderNumber}</strong>
+                </div>
+                <div class="invoice-row">
+                    <span>الاسم:</span>
+                    <strong>${orderData.fullName}</strong>
+                </div>
+                <div class="invoice-row">
+                    <span>البريد الإلكتروني:</span>
+                    <strong>${orderData.email}</strong>
+                </div>
+                <div class="invoice-row">
+                    <span>المنتج:</span>
+                    <strong>${orderData.product}</strong>
+                </div>
+                <div class="invoice-row">
+                    <span>السعر:</span>
+                    <strong>${orderData.price}</strong>
+                </div>
+                <div class="invoice-row">
+                    <span>طريقة الدفع:</span>
+                    <strong>${orderData.paymentMethod}</strong>
+                </div>
+                <div class="invoice-row">
+                    <span>التاريخ:</span>
+                    <strong>${orderData.orderDate}</strong>
+                </div>
+            `;
+
+            document.getElementById('orderModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('orderModal').classList.remove('active');
+        }
+
+        async function generatePDFAndRedirect() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    await loadArabicFont(doc);
+
+    doc.setFontSize(18);
+    doc.text("فاتورة الطلب", 105, 20, { align: "center" });
+
+    let y = 40;
+    doc.setFontSize(12);
+
+    doc.text(`رقم الطلب: ${orderData.orderNumber}`, 190, y, { align: "right" }); y+=10;
+    doc.text(`الاسم: ${orderData.fullName}`, 190, y, { align: "right" }); y+=10;
+    doc.text(`البريد الإلكتروني: ${orderData.email}`, 190, y, { align: "right" }); y+=10;
+    doc.text(`المنتج: ${orderData.product}`, 190, y, { align: "right" }); y+=10;
+    doc.text(`السعر: ${orderData.price}`, 190, y, { align: "right" }); y+=10;
+    doc.text(`طريقة الدفع: ${orderData.paymentMethod}`, 190, y, { align: "right" }); y+=10;
+    doc.text(`التاريخ: ${orderData.orderDate}`, 190, y, { align: "right" });
+
+    // QR
+    const qrCanvas = document.createElement("div");
+    new QRCode(qrCanvas, { text: orderData.orderNumber, width: 100, height: 100 });
+    const imgData = qrCanvas.querySelector("img").src;
+    doc.addImage(imgData, "PNG", 80, y + 10, 50, 50);
+
+    doc.save("Invoice-" + orderData.orderNumber + ".pdf");
+
+    setTimeout(() => {
+        window.open("https://t.me/abdoudz213", "_blank");
+    }, 500);
+
+    closeModal();
+}
+        async function loadArabicFont(doc) {
+    const response = await fetch('fonts/Cairo-Regular.ttf');
+    const font = await response.arrayBuffer();
+
+    const fontBase64 = btoa(
+        new Uint8Array(font)
+            .reduce((data, byte) => data + String.fromCharCode(byte), '')
+    );
+
+    doc.addFileToVFS("Cairo.ttf", fontBase64);
+    doc.addFont("Cairo.ttf", "Cairo", "normal");
+    doc.setFont("Cairo");
+}
+
+    </script>
+</body>
+</html>
